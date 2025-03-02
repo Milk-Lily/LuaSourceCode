@@ -1,0 +1,122 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A06D279D-5A1F-40E3-9CB4-F57CF3054229}|LuaSourceCode.vcxproj|D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\lapi.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A06D279D-5A1F-40E3-9CB4-F57CF3054229}|LuaSourceCode.vcxproj|solutionrelative:lapi.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A06D279D-5A1F-40E3-9CB4-F57CF3054229}|LuaSourceCode.vcxproj|D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\LuaSourceCode.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A06D279D-5A1F-40E3-9CB4-F57CF3054229}|LuaSourceCode.vcxproj|solutionrelative:LuaSourceCode.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A06D279D-5A1F-40E3-9CB4-F57CF3054229}|LuaSourceCode.vcxproj|D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\TestLua.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A06D279D-5A1F-40E3-9CB4-F57CF3054229}|LuaSourceCode.vcxproj|solutionrelative:TestLua.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\testlua.lua||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:testlua.lua||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A06D279D-5A1F-40E3-9CB4-F57CF3054229}|LuaSourceCode.vcxproj|D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\lua.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A06D279D-5A1F-40E3-9CB4-F57CF3054229}|LuaSourceCode.vcxproj|solutionrelative:lua.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A06D279D-5A1F-40E3-9CB4-F57CF3054229}|LuaSourceCode.vcxproj|D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\luac.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A06D279D-5A1F-40E3-9CB4-F57CF3054229}|LuaSourceCode.vcxproj|solutionrelative:luac.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "lapi.c",
+              "DocumentMoniker": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\lapi.c",
+              "RelativeDocumentMoniker": "lapi.c",
+              "ToolTip": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\lapi.c",
+              "RelativeToolTip": "lapi.c",
+              "ViewState": "AgIAACYBAAAAAAAAAIA0wDQBAAAUAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
+              "WhenOpened": "2025-02-25T15:50:33.164Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "testlua.lua",
+              "DocumentMoniker": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\testlua.lua",
+              "RelativeDocumentMoniker": "testlua.lua",
+              "ToolTip": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\testlua.lua",
+              "RelativeToolTip": "testlua.lua",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2024-12-19T16:40:43.749Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "TestLua.h",
+              "DocumentMoniker": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\TestLua.h",
+              "RelativeDocumentMoniker": "TestLua.h",
+              "ToolTip": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\TestLua.h",
+              "RelativeToolTip": "TestLua.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2024-12-19T16:35:52.465Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "luac.c",
+              "DocumentMoniker": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\luac.c",
+              "RelativeDocumentMoniker": "luac.c",
+              "ToolTip": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\luac.c",
+              "RelativeToolTip": "luac.c",
+              "ViewState": "AgIAALcAAAAAAAAAAAAYwMUAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
+              "WhenOpened": "2024-12-19T16:34:47.321Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "lua.c",
+              "DocumentMoniker": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\lua.c",
+              "RelativeDocumentMoniker": "lua.c",
+              "ToolTip": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\lua.c",
+              "RelativeToolTip": "lua.c",
+              "ViewState": "AgIAAHsCAAAAAAAAAAAYwIYCAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
+              "WhenOpened": "2024-12-19T16:34:45.986Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "LuaSourceCode.cpp",
+              "DocumentMoniker": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\LuaSourceCode.cpp",
+              "RelativeDocumentMoniker": "LuaSourceCode.cpp",
+              "ToolTip": "D:\\SoftWare\\vs\\Projects\\LuaSourceCode\\LuaSourceCode\\LuaSourceCode.cpp",
+              "RelativeToolTip": "LuaSourceCode.cpp",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAAABUAAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2024-12-19T16:30:51.305Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
