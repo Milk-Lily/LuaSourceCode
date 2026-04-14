@@ -14,7 +14,7 @@ int main()
 	lua_State* L = luaL_newstate();
 	luaL_openlibs(L);
 	std::cout << "prepare do testlua.lua\n";
-	luaL_dofile(L, "testlua.lua");
+	luaL_dofile(L, "lua\\Entry.lua");
 	std::cout << "do testlua.lua finish\n";
 	lua_close(L);
 

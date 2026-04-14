@@ -198,6 +198,10 @@
   <ItemGroup>
     <ResourceCompile Include="LuaSourceCode.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="Leaderboard.lua" />
+    <Content Include="SkipList.lua" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
