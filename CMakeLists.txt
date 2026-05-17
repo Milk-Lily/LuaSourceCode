@@ -1,74 +1,55 @@
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 3.10)
 project(LuaSourceCode)
 
 set(CMAKE_CXX_STANDARD 14)
+
+# Linux 下需要的编译选项
+if(UNIX)
+    add_compile_definitions(LUA_USE_LINUX)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DLUA_USE_LINUX")
+endif()
 
 include_directories(.)
 
 add_executable(LuaSourceCode
     lapi.c
-    lapi.h
     lauxlib.c
-    lauxlib.h
     lbaselib.c
     lcode.c
-    lcode.h
     lcorolib.c
     lctype.c
-    lctype.h
     ldblib.c
     ldebug.c
-    ldebug.h
     ldo.c
-    ldo.h
     ldump.c
     lfunc.c
-    lfunc.h
     lgc.c
-    lgc.h
     linit.c
     liolib.c
-    ljumptab.h
     llex.c
-    llex.h
-    llimits.h
     lmathlib.c
     lmem.c
-    lmem.h
     loadlib.c
     lobject.c
-    lobject.h
     lopcodes.c
-    lopcodes.h
-    lopnames.h
     loslib.c
     lparser.c
-    lparser.h
-    lprefix.h
     lstate.c
-    lstate.h
     lstring.c
-    lstring.h
     lstrlib.c
     ltable.c
-    ltable.h
     ltablib.c
     ltm.c
-    ltm.h
-    lua.c
-    lua.h
-    lua.hpp
-    luac.c
-    luaconf.h
-    lualib.h
-    LuaSourceCode.cpp
     lundump.c
-    lundump.h
     lutf8lib.c
     lvm.c
-    lvm.h
     lzio.c
-    lzio.h
-    resource.h
-    TestLua.cpp
-    TestLua.h)
+    LuaSourceCode.cpp)
+
+# Linux 需要链接 math 和 dl 库
+if(UNIX)
+    target_link_libraries(LuaSourceCode m dl)
+endif()
+
+# 将 lua 脚本目录拷贝到构建目录，方便运行时找到脚本
+file(COPY ${CMAKE_SOURCE_DIR}/lua DESTINATION ${CMAKE_BINARY_DIR})

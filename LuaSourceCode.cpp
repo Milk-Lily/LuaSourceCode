@@ -1,7 +1,8 @@
-﻿// LuaSourceCode.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
+﻿// LuaSourceCode.cpp : C++ 嵌入 Lua 源码工程入口（Linux）
 //
 
 #include <iostream>
+#include <cstdlib>
 
 extern "C" {
 #include "lua.h"
@@ -11,16 +12,19 @@ extern "C" {
 
 int main()
 {
-	lua_State* L = luaL_newstate();
-	luaL_openlibs(L);
-	std::cout << "prepare do testlua.lua\n";
-	luaL_dofile(L, "lua\\Entry.lua");
-	std::cout << "do testlua.lua finish\n";
-	lua_close(L);
+    lua_State* L = luaL_newstate();
+    luaL_openlibs(L);
 
-	int a = 0;
-	std::cin >> a;
-	return a;
+    std::cout << "Starting Lua: lua/Entry.lua\n";
+
+    int ret = luaL_dofile(L, "lua/Entry.lua");
+    if (ret != LUA_OK) {
+        std::cerr << "Lua error: " << lua_tostring(L, -1) << "\n";
+        lua_pop(L, 1);
+    }
+
+    lua_close(L);
+    return ret;
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
