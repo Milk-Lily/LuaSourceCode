@@ -123,6 +123,7 @@ local step_level = 0
 local stack_level = 0
 local SAFEWS = "\012" -- "safe" whitespace value
 local server
+local passive_server
 local buf
 local outputs = {}
 local iobase = {print = print}
@@ -294,6 +295,19 @@ local function removebasedir(path, basedir)
   end
 end
 
+local function normalize_breakpoint_file(file)
+  file = string.gsub(file or "", "\\", "/")
+  file = removebasedir(file, basedir)
+  if file:find("./") == 1 then file = file:sub(3) end
+
+  local luapos = file:find("/lua/", 1, true)
+  if luapos then file = file:sub(luapos + 5) end
+  if file:find("lua/") == 1 then file = file:sub(5) end
+
+  if iscasepreserving then file = string.lower(file) end
+  return file
+end
+
 local function stack(start)
   local function vars(f)
     local func = debug.getinfo(f, "f").func
@@ -351,22 +365,27 @@ local function stack(start)
 end
 
 local function set_breakpoint(file, line)
-  if file == '-' and lastfile then file = lastfile
-  elseif iscasepreserving then file = string.lower(file) end
+  if file == '-' and lastfile then file = lastfile end
+  file = normalize_breakpoint_file(file)
   if not breakpoints[line] then breakpoints[line] = {} end
   breakpoints[line][file] = true
+  print(("[mobdebug] breakpoint set %s:%s"):format(tostring(file), tostring(line)))
 end
 
 local function remove_breakpoint(file, line)
   if file == '-' and lastfile then file = lastfile
   elseif file == '*' and line == 0 then breakpoints = {}
-  elseif iscasepreserving then file = string.lower(file) end
+  else
+    file = normalize_breakpoint_file(file)
+  end
   if breakpoints[line] then breakpoints[line][file] = nil end
+  print(("[mobdebug] breakpoint removed %s:%s"):format(tostring(file), tostring(line)))
 end
 
 local function has_breakpoint(file, line)
+  file = normalize_breakpoint_file(file)
   return breakpoints[line]
-     and breakpoints[line][iscasepreserving and string.lower(file) or file]
+     and breakpoints[line][file]
 end
 
 local function restore_vars(vars)
@@ -596,6 +615,8 @@ local function debug_hook(event, line)
   elseif event == "return" or event == "tail return" then
     stack_level = stack_level - 1
   elseif event == "line" then
+    if not server or not coro_debugger then return end
+
     if mobdebug.linemap then
       local ok, mappedline = pcall(mobdebug.linemap, line, debug.getinfo(2, "S").source)
       if ok then line = mappedline end
@@ -653,8 +674,13 @@ local function debug_hook(event, line)
         -- set on foo.lua will not work if not converted to the same case.
         if iscasepreserving then file = string.lower(file) end
         if find(file, "^%./") then file = sub(file, 3) end
+        if rawget(genv, "__mobdebug_report_fullpath") and basedir ~= "" and not find(file, "^/") then
+          file = basedir .. file
+        end
         -- remove basedir, so that breakpoints are checked properly
-        file = gsub(file, "^"..q(basedir), "")
+        if not rawget(genv, "__mobdebug_report_fullpath") then
+          file = gsub(file, "^"..q(basedir), "")
+        end
         -- some file systems allow newlines in file names; remove these.
         file = gsub(file, "\n", ' ')
       else
@@ -684,15 +710,21 @@ local function debug_hook(event, line)
 
     -- need to get into the "regular" debug handler, but only if there was
     -- no watch that was fired. If there was a watch, handle its result.
+    local bp_hit = has_breakpoint(file, line)
+    if bp_hit then
+      print(("[mobdebug] breakpoint hit candidate %s:%s"):format(tostring(file), tostring(line)))
+    end
+
     local getin = (status == nil) and
       (step_into
       -- when coroutine.running() return `nil` (main thread in Lua 5.1),
       -- step_over will equal 'main', so need to check for that explicitly.
       or (step_over and step_over == (coroutine.running() or 'main') and stack_level <= step_level)
-      or has_breakpoint(file, line)
+      or bp_hit
       or is_pending(server))
 
     if getin then
+      if not coro_debugger then return end
       vars = vars or capture_vars(1)
       step_into = false
       step_over = false
@@ -762,6 +794,14 @@ local function done()
 
   debug.sethook()
   server:close()
+  server = nil
+
+  breakpoints = {}
+  watches = {}
+  watchescnt = 0
+  step_into = false
+  step_over = false
+  step_level = 0
 
   coro_debugger = nil -- to make sure isrunning() returns `false`
   seen_hook = nil -- to make sure that the next start() call works
@@ -785,7 +825,9 @@ local function debugger_loop(sev, svars, sfile, sline)
         if err == "timeout" then
           if mobdebug.yield then mobdebug.yield() end
         elseif err == "closed" then
-          error("Debugger connection closed", 0)
+          print("[mobdebug] debugger disconnected")
+          done()
+          return
         else
           error(("Unexpected socket error: %s"):format(err), 0)
         end
@@ -796,8 +838,17 @@ local function debugger_loop(sev, svars, sfile, sline)
       end
     end
     if server.settimeout then server:settimeout() end -- back to blocking
-    command = string.sub(line, string.find(line, "^[A-Z]+"))
-    if command == "SETB" then
+    local command, cmdargs = string.match(line, "^([A-Z]+)%s*(.*)$")
+    if not command then
+      print(("[mobdebug] unsupported packet: %s"):format(tostring(line)))
+      server:send("400 Bad Request\n")
+    else
+      print(("[mobdebug] command received: %s line=%s"):format(tostring(command), tostring(line)))
+    end
+
+    if not command then
+      -- continue waiting for supported protocol commands
+    elseif command == "SETB" then
       local _, _, _, file, line = string.find(line, "^([A-Z]+)%s+(.-)%s+(%d+)%s*$")
       if file and line then
         set_breakpoint(file, tonumber(line))
@@ -813,38 +864,103 @@ local function debugger_loop(sev, svars, sfile, sline)
       else
         server:send("400 Bad Request\n")
       end
-    elseif command == "EXEC" then
+    elseif command == "EXEC" or command == "EVAL" then
       -- extract any optional parameters
       local params = string.match(line, "--%s*(%b{})%s*$")
-      local _, _, chunk = string.find(line, "^[A-Z]+%s+(.+)$")
-      if chunk then
+      local chunk = cmdargs
+      local payload_size = tonumber(chunk)
+      if payload_size then
+        -- Some IDEs send EVAL/EXEC as: "EVAL <size>" + binary/text payload.
+        chunk = payload_size > 0 and server:receive(payload_size) or ""
+      end
+
+      if not chunk then
+        server:send("400 Bad Request\n")
+      else
         -- \r is optional, as it may be stripped by some luasocket versions, like the one in LOVE2d
         chunk = chunk:gsub("\r?"..SAFEWS, "\n") -- convert safe whitespace back to new line
-        local func, res = mobdebug.loadstring(chunk)
-        local status
-        if func then
-          local pfunc = params and loadstring("return "..params) -- use internal function
-          params = pfunc and pfunc()
-          params = (type(params) == "table" and params or {})
-          local stack = tonumber(params.stack)
-          -- if the requested stack frame is not the current one, then use a new capture
-          -- with a specific stack frame: `capture_vars(0, coro_debugee)`
-          local env = stack and coro_debugee and capture_vars(stack-1, coro_debugee) or eval_env
-          setfenv(func, env)
-          status, res = stringify_results(params, pcall(func, unpack(rawget(env,'...') or {})))
-        end
-        if status then
-          if mobdebug.onscratch then mobdebug.onscratch(res) end
-          server:send("200 OK " .. tostring(#res) .. "\n")
-          server:send(res)
+
+        local pfunc = params and loadstring("return "..params) -- use internal function
+        params = pfunc and pfunc()
+        params = (type(params) == "table" and params or {})
+        local stack = tonumber(params.stack)
+        -- if the requested stack frame is not the current one, then use a new capture
+        -- with a specific stack frame: `capture_vars(0, coro_debugee)`
+        local env = stack and coro_debugee and capture_vars(stack-1, coro_debugee) or eval_env
+
+        if command == "EVAL" then
+          local eval_chunk = (#chunk > 0) and ("return(" .. chunk .. ")") or "return(nil)"
+          local func, err = mobdebug.loadstring(eval_chunk)
+          if func then
+            setfenv(func, env)
+            local ok, value = pcall(func, unpack(rawget(env,'...') or {}))
+            if ok then
+              local mode = rawget(genv, "__mobdebug_eval_response_mode")
+              local s_ok, serialized = stringify_results(params, true, value)
+              serialized = tostring(s_ok and serialized or value)
+
+              local plain
+              local vtype = type(value)
+              if vtype == "string" then
+                plain = value
+              elseif vtype == "number" or vtype == "boolean" or vtype == "nil" then
+                plain = tostring(value)
+              else
+                plain = select(2, pcall(mobdebug.line, value, {nocode = true, comment = false}))
+                plain = tostring(plain)
+              end
+
+              if mode == "length" then
+                print(("[mobdebug] eval response mode=length payload_bytes=%d"):format(#serialized))
+                server:send("200 OK " .. tostring(#serialized) .. "\n")
+                server:send(serialized)
+              elseif mode == "inline_serialized" then
+                print(("[mobdebug] eval response mode=inline_serialized payload_bytes=%d"):format(#serialized))
+                server:send("200 OK " .. serialized .. "\n")
+              else
+                local inline = plain:gsub("\r?\n", "\\n")
+                print(("[mobdebug] eval response mode=inline_value payload=%s"):format(inline))
+                server:send("200 OK " .. inline .. "\n")
+              end
+            else
+              local out = tostring(value or "Unknown error")
+              local mode = rawget(genv, "__mobdebug_eval_response_mode")
+              if mode == "length" then
+                server:send("401 Error in Expression " .. tostring(#out) .. "\n")
+                server:send(out)
+              else
+                server:send("401 Error in Expression " .. out:gsub("\r?\n", " ") .. "\n")
+              end
+            end
+          else
+            err = tostring(err or "Unknown error")
+            local mode = rawget(genv, "__mobdebug_eval_response_mode")
+            if mode == "length" then
+              server:send("401 Error in Expression " .. tostring(#err) .. "\n")
+              server:send(err)
+            else
+              server:send("401 Error in Expression " .. err:gsub("\r?\n", " ") .. "\n")
+            end
+          end
         else
-          -- fix error if not set (for example, when loadstring is not present)
-          if not res then res = "Unknown error" end
-          server:send("401 Error in Expression " .. tostring(#res) .. "\n")
-          server:send(res)
+          local func, res = mobdebug.loadstring(chunk)
+          local status
+          if func then
+            setfenv(func, env)
+            status, res = stringify_results(params, pcall(func, unpack(rawget(env,'...') or {})))
+          end
+          if status then
+            if mobdebug.onscratch then mobdebug.onscratch(res) end
+            server:send("200 OK " .. tostring(#res) .. "\n")
+            server:send(res)
+          else
+            -- fix error if not set (for example, when loadstring is not present)
+            if not res then res = "Unknown error" end
+            res = tostring(res)
+            server:send("401 Error in Expression " .. tostring(#res) .. "\n")
+            server:send(res)
+          end
         end
-      else
-        server:send("400 Bad Request\n")
       end
     elseif command == "LOAD" then
       local _, _, size, name = string.find(line, "^[A-Z]+%s+(%d+)%s+(%S.-)%s*$")
@@ -976,8 +1092,14 @@ local function debugger_loop(sev, svars, sfile, sline)
     elseif command == "SUSPEND" then
       -- do nothing; it already fulfilled its role
     elseif command == "DONE" then
-      coroyield("done")
-      return -- done with all the debugging
+      if rawget(genv, "__mobdebug_keepalive_on_exit") then
+        print("[mobdebug] debugger done requested; detaching and keeping process alive")
+        done()
+        return
+      else
+        coroyield("done")
+        return -- done with all the debugging
+      end
     elseif command == "STACK" then
       -- first check if we can execute the stack command
       -- as it requires yielding back to debug_hook it cannot be executed
@@ -1034,7 +1156,13 @@ local function debugger_loop(sev, svars, sfile, sline)
       end
     elseif command == "EXIT" then
       server:send("200 OK\n")
-      coroyield("exit")
+      if rawget(genv, "__mobdebug_keepalive_on_exit") then
+        print("[mobdebug] debugger exit requested; detaching and keeping process alive")
+        done()
+        return
+      else
+        coroyield("exit")
+      end
     else
       server:send("400 Bad Request\n")
     end
@@ -1574,8 +1702,6 @@ local function handle(params, client, options)
   end
   return file, line
 end
-
-local passive_server
 
 local function attach_client(client)
   if isrunning() then return true end

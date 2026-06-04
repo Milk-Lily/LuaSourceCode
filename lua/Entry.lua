@@ -24,15 +24,25 @@ package.cpath = _dir .. "?.so;"
 
 local ok_mob, mobdebug_or_err = pcall(require, 'mobdebug')
 if ok_mob then
+    local _base = _dir:gsub("\\", "/")
+    _base = _base:gsub("lua/$", "")
+    pcall(mobdebug_or_err.basedir, _base)
+
     local mobdebug_mode = os.getenv('MOBDEBUG_MODE') or 'start'
     local mobdebug_host = os.getenv('MOBDEBUG_HOST') or '127.0.0.1'
     local mobdebug_port = tonumber(os.getenv('MOBDEBUG_PORT')) or 8172
     if mobdebug_mode == 'listenbg' then
+        _G.__mobdebug_keepalive_on_exit = true
+        _G.__mobdebug_report_fullpath = true
+        _G.__mobdebug_eval_inline = os.getenv('MOBDEBUG_EVAL_INLINE') == '1'
+        _G.__mobdebug_eval_response_mode = os.getenv('MOBDEBUG_EVAL_RESPONSE_MODE') or 'inline_value'
+        mobdebug_or_err.checkcount = tonumber(os.getenv('MOBDEBUG_CHECKCOUNT')) or 1
         local ok_listen, listen_err = pcall(mobdebug_or_err.listen_background, '*', mobdebug_port)
         if not ok_listen then
             print("[mobdebug] listenbg init skipped: " .. tostring(listen_err))
         else
             print(string.format("[mobdebug] listenbg ready on 0.0.0.0:%d", mobdebug_port))
+            print(string.format("[mobdebug] listenbg poll checkcount=%d", mobdebug_or_err.checkcount))
             _G.__mobdebug_try_attach = function()
                 local ok_poll, poll_res = pcall(mobdebug_or_err.poll)
                 if not ok_poll then
@@ -43,6 +53,9 @@ if ok_mob then
             end
         end
     else
+        _G.__mobdebug_keepalive_on_exit = false
+        _G.__mobdebug_report_fullpath = false
+        _G.__mobdebug_eval_inline = false
         local ok_debug, debug_err = pcall(mobdebug_or_err.start, mobdebug_host, mobdebug_port)
         if not ok_debug then
             print("[mobdebug] start skipped: " .. tostring(debug_err))
