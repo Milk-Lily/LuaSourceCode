@@ -911,9 +911,9 @@ local function debugger_loop(sev, svars, sfile, sline)
               end
 
               if mode == "length" then
-                print(("[mobdebug] eval response mode=length payload_bytes=%d"):format(#serialized))
-                server:send("200 OK " .. tostring(#serialized) .. "\n")
-                server:send(serialized)
+                print(("[mobdebug] eval response mode=length payload_bytes=%d"):format(#plain))
+                server:send("200 OK " .. tostring(#plain) .. "\n")
+                server:send(plain)
               elseif mode == "inline_serialized" then
                 print(("[mobdebug] eval response mode=inline_serialized payload_bytes=%d"):format(#serialized))
                 server:send("200 OK " .. serialized .. "\n")

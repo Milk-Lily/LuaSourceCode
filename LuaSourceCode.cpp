@@ -6,6 +6,12 @@
 #include <csignal>
 #include <cstring>
 #include <sys/select.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 
 extern "C" {
 #include "lua.h"
@@ -37,6 +43,118 @@ static int lua_sleep(lua_State* L)
     return 0;
 }
 
+// ─────────────────────────────────────────────────────────────
+// 调试 Agent 用的轻量 TCP socket 接口（仅 Linux）
+// 暴露给 Lua：
+//   dbg_listen(port)         → fd 或 nil,err
+//   dbg_accept(server_fd)    → fd 或 nil,err
+//   dbg_send(fd, str)        → true 或 nil,err
+//   dbg_recv_line(fd)        → str 或 nil,err   （读到 '\n' 为止）
+//   dbg_recv_n(fd, n)        → str 或 nil,err   （精确读 n 字节）
+//   dbg_close(fd)            → true
+// ─────────────────────────────────────────────────────────────
+
+static int lua_dbg_listen(lua_State* L)
+{
+    int port = (int)luaL_checkinteger(L, 1);
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) { lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2; }
+
+    int opt = 1;
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    struct sockaddr_in addr{};
+    addr.sin_family      = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port        = htons((uint16_t)port);
+
+    if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        close(fd); lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2;
+    }
+    if (listen(fd, 1) < 0) {
+        close(fd); lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2;
+    }
+    lua_pushinteger(L, fd);
+    return 1;
+}
+
+static int lua_dbg_accept(lua_State* L)
+{
+    int server_fd = (int)luaL_checkinteger(L, 1);
+    struct sockaddr_in client{};
+    socklen_t len = sizeof(client);
+    int fd = accept(server_fd, (struct sockaddr*)&client, &len);
+    if (fd < 0) { lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2; }
+    lua_pushinteger(L, fd);
+    return 1;
+}
+
+static int lua_dbg_send(lua_State* L)
+{
+    int fd     = (int)luaL_checkinteger(L, 1);
+    size_t len = 0;
+    const char* s = luaL_checklstring(L, 2, &len);
+    size_t sent = 0;
+    while (sent < len) {
+        ssize_t n = send(fd, s + sent, len - sent, MSG_NOSIGNAL);
+        if (n < 0) { lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2; }
+        sent += (size_t)n;
+    }
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+static int lua_dbg_recv_line(lua_State* L)
+{
+    int fd = (int)luaL_checkinteger(L, 1);
+    luaL_Buffer B;
+    luaL_buffinit(L, &B);
+    char c;
+    while (true) {
+        ssize_t n = recv(fd, &c, 1, 0);
+        if (n <= 0) {
+            if (n == 0) { lua_pushnil(L); lua_pushstring(L, "connection closed"); return 2; }
+            lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2;
+        }
+        if (c == '\n') break;
+        luaL_addchar(&B, c);
+    }
+    luaL_pushresult(&B);
+    return 1;
+}
+
+static int lua_dbg_recv_n(lua_State* L)
+{
+    int fd   = (int)luaL_checkinteger(L, 1);
+    int need = (int)luaL_checkinteger(L, 2);
+    if (need <= 0) { lua_pushstring(L, ""); return 1; }
+
+    luaL_Buffer B;
+    luaL_buffinit(L, &B);
+    int got = 0;
+    while (got < need) {
+        char buf[4096];
+        int chunk = (need - got) < (int)sizeof(buf) ? (need - got) : (int)sizeof(buf);
+        ssize_t n = recv(fd, buf, (size_t)chunk, 0);
+        if (n <= 0) {
+            if (n == 0) { lua_pushnil(L); lua_pushstring(L, "connection closed"); return 2; }
+            lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2;
+        }
+        luaL_addlstring(&B, buf, (size_t)n);
+        got += (int)n;
+    }
+    luaL_pushresult(&B);
+    return 1;
+}
+
+static int lua_dbg_close(lua_State* L)
+{
+    int fd = (int)luaL_checkinteger(L, 1);
+    close(fd);
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
 int main()
 {
     signal(SIGINT, sigint_handler);
@@ -47,6 +165,14 @@ int main()
     // 将 sleep 函数注册为全局函数供 Lua 调用
     lua_pushcfunction(L, lua_sleep);
     lua_setglobal(L, "sleep");
+
+    // 注册调试 Agent 用的 TCP socket 原语
+    lua_pushcfunction(L, lua_dbg_listen);    lua_setglobal(L, "dbg_listen");
+    lua_pushcfunction(L, lua_dbg_accept);    lua_setglobal(L, "dbg_accept");
+    lua_pushcfunction(L, lua_dbg_send);      lua_setglobal(L, "dbg_send");
+    lua_pushcfunction(L, lua_dbg_recv_line); lua_setglobal(L, "dbg_recv_line");
+    lua_pushcfunction(L, lua_dbg_recv_n);    lua_setglobal(L, "dbg_recv_n");
+    lua_pushcfunction(L, lua_dbg_close);     lua_setglobal(L, "dbg_close");
 
     std::cout << "Starting Lua: lua/Entry.lua\n";
 
