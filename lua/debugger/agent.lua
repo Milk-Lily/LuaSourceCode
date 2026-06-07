@@ -126,6 +126,18 @@ local function _recv_line()
     return line:gsub("\r$", "")
 end
 
+local function _recv_line_timeout(timeout_ms)
+    if not _client_fd or type(dbg_recv_line_timeout) ~= "function" then return nil end
+    local line, err = dbg_recv_line_timeout(_client_fd, timeout_ms or 0)
+    if not line then
+        if err == "timeout" then return nil end
+        if err == "interrupted" then error("interrupted") end
+        print("[agent] recv error: " .. tostring(err))
+        _client_fd = nil
+        return nil
+    end
+    return line:gsub("\r$", "")
+end
 local function _recv_n(n)
     if not _client_fd then return nil end
     local data, err = dbg_recv_n(_client_fd, n)
@@ -294,9 +306,52 @@ local function _command_loop(hook_level)
     end
 end
 
+local function _handle_async_command(line)
+    if not line then return end
+    print("[agent] async cmd: " .. line)
+
+    if line:sub(1, 4) == "SETB" then
+        local file, ln = line:match("SETB%s+(.+)%s+(%d+)")
+        if file and ln then
+            _breakpoints[file] = _breakpoints[file] or {}
+            _breakpoints[file][tonumber(ln)] = true
+            print(string.format("[agent] breakpoint set %s:%s", file, ln))
+            _send("OK\n")
+        else
+            _send("ERR bad SETB\n")
+        end
+
+    elseif line:sub(1, 4) == "DELB" then
+        local file, ln = line:match("DELB%s+(.+)%s+(%d+)")
+        if file and ln then
+            if _breakpoints[file] then
+                _breakpoints[file][tonumber(ln)] = nil
+            end
+            print(string.format("[agent] breakpoint removed %s:%s", file, ln))
+            _send("OK\n")
+        else
+            _send("ERR bad DELB\n")
+        end
+
+    elseif line == "BYE" then
+        _send("BYE\n")
+        dbg_close(_client_fd)
+        _client_fd = nil
+    end
+end
+
+local function _poll_running_commands()
+    while _client_fd do
+        local line = _recv_line_timeout(0)
+        if not line then return end
+        _handle_async_command(line)
+    end
+end
 -- ── debug hook ────────────────────────────────────────────────
 
 local function _line_hook(event, line)
+    if not _client_fd then return end
+    _poll_running_commands()
     if not _client_fd then return end
 
     local info  = debug.getinfo(2, "nSl")
@@ -434,3 +489,5 @@ function M.stop()
 end
 
 return M
+
+

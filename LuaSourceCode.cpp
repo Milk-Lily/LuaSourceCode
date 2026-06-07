@@ -1,4 +1,4 @@
-﻿// LuaSourceCode.cpp : C++ 嵌入 Lua 源码工程入口（Linux）
+// LuaSourceCode.cpp : C++ 嵌入 Lua 源码工程入口（Linux）
 //
 
 #include <iostream>
@@ -140,6 +140,39 @@ static int lua_dbg_recv_line(lua_State* L)
     return 1;
 }
 
+static int lua_dbg_recv_line_timeout(lua_State* L)
+{
+    int fd = (int)luaL_checkinteger(L, 1);
+    int timeout_ms = (int)luaL_optinteger(L, 2, 0);
+    if (timeout_ms < 0) timeout_ms = 0;
+
+    fd_set fds; FD_ZERO(&fds); FD_SET(fd, &fds);
+    struct timeval tv{};
+    tv.tv_sec = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+    int r = select(fd + 1, &fds, nullptr, nullptr, &tv);
+    if (r < 0) {
+        if (errno == EINTR) { lua_pushnil(L); lua_pushstring(L, "timeout"); return 2; }
+        lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2;
+    }
+    if (r == 0) { lua_pushnil(L); lua_pushstring(L, "timeout"); return 2; }
+
+    luaL_Buffer B;
+    luaL_buffinit(L, &B);
+    char c;
+    while (true) {
+        ssize_t n = recv(fd, &c, 1, 0);
+        if (n <= 0) {
+            if (n == 0) { lua_pushnil(L); lua_pushstring(L, "connection closed"); return 2; }
+            lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2;
+        }
+        if (c == '\n') break;
+        luaL_addchar(&B, c);
+    }
+    luaL_pushresult(&B);
+    return 1;
+}
 static int lua_dbg_recv_n(lua_State* L)
 {
     int fd   = (int)luaL_checkinteger(L, 1);
@@ -194,6 +227,7 @@ int main()
     lua_pushcfunction(L, lua_dbg_accept);    lua_setglobal(L, "dbg_accept");
     lua_pushcfunction(L, lua_dbg_send);      lua_setglobal(L, "dbg_send");
     lua_pushcfunction(L, lua_dbg_recv_line); lua_setglobal(L, "dbg_recv_line");
+    lua_pushcfunction(L, lua_dbg_recv_line_timeout); lua_setglobal(L, "dbg_recv_line_timeout");
     lua_pushcfunction(L, lua_dbg_recv_n);    lua_setglobal(L, "dbg_recv_n");
     lua_pushcfunction(L, lua_dbg_close);     lua_setglobal(L, "dbg_close");
 
@@ -224,3 +258,4 @@ int main()
 //   4. 使用错误列表窗口查看错误
 //   5. 转到“项目”>“添加新项”以创建新的代码文件，或转到“项目”>“添加现有项”以将现有代码文件添加到项目
 //   6. 将来，若要再次打开此项目，请转到“文件”>“打开”>“项目”并选择 .sln 文件
+
