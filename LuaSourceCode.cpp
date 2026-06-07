@@ -81,12 +81,23 @@ static int lua_dbg_listen(lua_State* L)
 static int lua_dbg_accept(lua_State* L)
 {
     int server_fd = (int)luaL_checkinteger(L, 1);
-    struct sockaddr_in client{};
-    socklen_t len = sizeof(client);
-    int fd = accept(server_fd, (struct sockaddr*)&client, &len);
-    if (fd < 0) { lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2; }
-    lua_pushinteger(L, fd);
-    return 1;
+    while (true) {
+        if (g_interrupted) { lua_pushnil(L); lua_pushstring(L, "interrupted"); return 2; }
+        fd_set fds; FD_ZERO(&fds); FD_SET(server_fd, &fds);
+        struct timeval tv{ 1, 0 };
+        int r = select(server_fd + 1, &fds, nullptr, nullptr, &tv);
+        if (r < 0) {
+            if (errno == EINTR) continue;
+            lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2;
+        }
+        if (r == 0) continue; // timeout, loop and check g_interrupted
+        struct sockaddr_in client{};
+        socklen_t len = sizeof(client);
+        int fd = accept(server_fd, (struct sockaddr*)&client, &len);
+        if (fd < 0) { lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2; }
+        lua_pushinteger(L, fd);
+        return 1;
+    }
 }
 
 static int lua_dbg_send(lua_State* L)
@@ -111,6 +122,12 @@ static int lua_dbg_recv_line(lua_State* L)
     luaL_buffinit(L, &B);
     char c;
     while (true) {
+        if (g_interrupted) { lua_pushnil(L); lua_pushstring(L, "interrupted"); return 2; }
+        fd_set fds; FD_ZERO(&fds); FD_SET(fd, &fds);
+        struct timeval tv{ 1, 0 };
+        int r = select(fd + 1, &fds, nullptr, nullptr, &tv);
+        if (r < 0) { if (errno == EINTR) continue; lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2; }
+        if (r == 0) continue;
         ssize_t n = recv(fd, &c, 1, 0);
         if (n <= 0) {
             if (n == 0) { lua_pushnil(L); lua_pushstring(L, "connection closed"); return 2; }
@@ -133,6 +150,12 @@ static int lua_dbg_recv_n(lua_State* L)
     luaL_buffinit(L, &B);
     int got = 0;
     while (got < need) {
+        if (g_interrupted) { lua_pushnil(L); lua_pushstring(L, "interrupted"); return 2; }
+        fd_set fds; FD_ZERO(&fds); FD_SET(fd, &fds);
+        struct timeval tv{ 1, 0 };
+        int r = select(fd + 1, &fds, nullptr, nullptr, &tv);
+        if (r < 0) { if (errno == EINTR) continue; lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2; }
+        if (r == 0) continue;
         char buf[4096];
         int chunk = (need - got) < (int)sizeof(buf) ? (need - got) : (int)sizeof(buf);
         ssize_t n = recv(fd, buf, (size_t)chunk, 0);

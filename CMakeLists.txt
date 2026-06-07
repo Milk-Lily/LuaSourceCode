@@ -53,10 +53,17 @@ if(UNIX)
     target_link_options(LuaSourceCode PRIVATE -Wl,-E)
 endif()
 
-# 将 lua 脚本目录拷贝到构建目录，方便运行时找到脚本。
-# 使用构建后拷贝，避免修改源码后 build/lua 中脚本未更新。
-add_custom_command(TARGET LuaSourceCode POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/lua
-            ${CMAKE_BINARY_DIR}/lua
-)
+# Copy lua scripts to build directory after build.
+if(UNIX)
+    add_custom_command(TARGET LuaSourceCode POST_BUILD
+        COMMAND cp -rf ${CMAKE_SOURCE_DIR}/lua ${CMAKE_BINARY_DIR}/
+        COMMENT "Copying lua/ to build output"
+    )
+else()
+    add_custom_command(TARGET LuaSourceCode POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/lua
+                ${CMAKE_BINARY_DIR}/lua
+        COMMENT "Copying lua/ to build output"
+    )
+endif()

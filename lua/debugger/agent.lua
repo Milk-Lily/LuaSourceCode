@@ -117,6 +117,7 @@ local function _recv_line()
     if not _client_fd then return nil end
     local line, err = dbg_recv_line(_client_fd)
     if not line then
+        if err == "interrupted" then error("interrupted") end
         print("[agent] recv error: " .. tostring(err))
         _client_fd = nil
         return nil
@@ -328,6 +329,7 @@ local function _handshake()
     print("[agent] waiting for IDE connection...")
     local fd, err = dbg_accept(_server_fd)
     if not fd then
+        if err == "interrupted" then error("interrupted") end
         print("[agent] accept error: " .. tostring(err))
         return false
     end
