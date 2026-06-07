@@ -272,7 +272,9 @@ int main()
     lua_pushcfunction(L, lua_dbg_recv_line); lua_setglobal(L, "dbg_recv_line");
     lua_pushcfunction(L, lua_dbg_recv_line_timeout); lua_setglobal(L, "dbg_recv_line_timeout");
     lua_pushcfunction(L, lua_dbg_recv_n);    lua_setglobal(L, "dbg_recv_n");
-    lua_pushcfunction(L, lua_dbg_close);     lua_setglobal(L, "dbg_close");`n    lua_pushcfunction(L, lua_dbg_getpid);    lua_setglobal(L, "dbg_getpid");`n    lua_pushcfunction(L, lua_dbg_readlink);  lua_setglobal(L, "dbg_readlink");
+    lua_pushcfunction(L, lua_dbg_close);     lua_setglobal(L, "dbg_close");
+    lua_pushcfunction(L, lua_dbg_getpid);    lua_setglobal(L, "dbg_getpid");
+    lua_pushcfunction(L, lua_dbg_readlink);  lua_setglobal(L, "dbg_readlink");
 
     std::cout << "Starting Lua: lua/Entry.lua\n";
 
