@@ -347,9 +347,63 @@ local function _poll_running_commands()
         _handle_async_command(line)
     end
 end
+local function _try_accept()
+    if _client_fd or not _server_fd or type(dbg_accept_timeout) ~= "function" then return false end
+
+    local fd, err = dbg_accept_timeout(_server_fd, 0)
+    if not fd then
+        if err ~= "timeout" and err ~= "interrupted" then
+            print("[agent] accept error: " .. tostring(err))
+        end
+        return false
+    end
+
+    _client_fd = fd
+    print("[agent] IDE connected")
+
+    local line = _recv_line_timeout(1000)
+    if not line or line ~= "HELLO" then
+        print("[agent] expected HELLO, got: " .. tostring(line))
+        dbg_close(fd)
+        _client_fd = nil
+        return false
+    end
+    _send("HELLO MilkDebug/1.0\n")
+
+    while _client_fd do
+        line = _recv_line()
+        if not line then break end
+        print("[agent] init cmd: " .. line)
+
+        if line:sub(1, 4) == "SETB" then
+            local file, ln = line:match("SETB%s+(.+)%s+(%d+)")
+            if file and ln then
+                _breakpoints[file] = _breakpoints[file] or {}
+                _breakpoints[file][tonumber(ln)] = true
+                print(string.format("[agent] breakpoint set %s:%s", file, ln))
+            end
+            _send("OK\n")
+
+        elseif line == "RUN" then
+            _send("OK\n")
+            break
+
+        elseif line == "BYE" then
+            _send("BYE\n")
+            dbg_close(fd)
+            _client_fd = nil
+            return false
+        else
+            _send("ERR unexpected\n")
+        end
+    end
+
+    return _client_fd ~= nil
+end
 -- ── debug hook ────────────────────────────────────────────────
 
 local function _line_hook(event, line)
+    if not _client_fd then _try_accept() end
     if not _client_fd then return end
     _poll_running_commands()
     if not _client_fd then return end
@@ -435,7 +489,7 @@ end
 
 -- ── 公开 API ──────────────────────────────────────────────────
 
---- 启动调试 Agent，监听指定端口，阻塞等待 IDE 连接，然后安装 debug hook。
+--- 启动调试 Agent，监听指定端口并立即返回；IDE 可稍后 attach/detach。
 -- @param port  监听端口，默认 8173
 function M.start(port)
     port = port or 8173
@@ -447,15 +501,12 @@ function M.start(port)
     _server_fd = fd
     print(string.format("[agent] listening on 0.0.0.0:%d", port))
 
-    if not _handshake() then
-        print("[agent] handshake failed, running without debugger")
-        return
-    end
+
 
     -- 安装行钩子
     debug.sethook(_line_hook, "l")
     _running = true
-    print("[agent] hook installed, running...")
+    print("[agent] hook installed, running; IDE may attach later...")
 end
 
 --- 非阻塞轮询版本：Agent 已经在后台监听，每 tick 调用此函数检查是否有新 IDE 连接。
@@ -489,5 +540,6 @@ function M.stop()
 end
 
 return M
+
 
 

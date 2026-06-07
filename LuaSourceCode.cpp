@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <limits.h>
 
 extern "C" {
 #include "lua.h"
@@ -100,6 +101,31 @@ static int lua_dbg_accept(lua_State* L)
     }
 }
 
+static int lua_dbg_accept_timeout(lua_State* L)
+{
+    int server_fd = (int)luaL_checkinteger(L, 1);
+    int timeout_ms = (int)luaL_optinteger(L, 2, 0);
+    if (timeout_ms < 0) timeout_ms = 0;
+
+    fd_set fds; FD_ZERO(&fds); FD_SET(server_fd, &fds);
+    struct timeval tv{};
+    tv.tv_sec = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+    int r = select(server_fd + 1, &fds, nullptr, nullptr, &tv);
+    if (r < 0) {
+        if (errno == EINTR) { lua_pushnil(L); lua_pushstring(L, "timeout"); return 2; }
+        lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2;
+    }
+    if (r == 0) { lua_pushnil(L); lua_pushstring(L, "timeout"); return 2; }
+
+    struct sockaddr_in client{};
+    socklen_t len = sizeof(client);
+    int fd = accept(server_fd, (struct sockaddr*)&client, &len);
+    if (fd < 0) { lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2; }
+    lua_pushinteger(L, fd);
+    return 1;
+}
 static int lua_dbg_send(lua_State* L)
 {
     int fd     = (int)luaL_checkinteger(L, 1);
@@ -203,6 +229,22 @@ static int lua_dbg_recv_n(lua_State* L)
     return 1;
 }
 
+static int lua_dbg_getpid(lua_State* L)
+{
+    lua_pushinteger(L, (lua_Integer)getpid());
+    return 1;
+}
+
+static int lua_dbg_readlink(lua_State* L)
+{
+    const char* path = luaL_checkstring(L, 1);
+    char buf[PATH_MAX + 1];
+    ssize_t len = readlink(path, buf, PATH_MAX);
+    if (len < 0) { lua_pushnil(L); lua_pushstring(L, strerror(errno)); return 2; }
+    buf[len] = '\0';
+    lua_pushstring(L, buf);
+    return 1;
+}
 static int lua_dbg_close(lua_State* L)
 {
     int fd = (int)luaL_checkinteger(L, 1);
@@ -225,11 +267,12 @@ int main()
     // 注册调试 Agent 用的 TCP socket 原语
     lua_pushcfunction(L, lua_dbg_listen);    lua_setglobal(L, "dbg_listen");
     lua_pushcfunction(L, lua_dbg_accept);    lua_setglobal(L, "dbg_accept");
+    lua_pushcfunction(L, lua_dbg_accept_timeout); lua_setglobal(L, "dbg_accept_timeout");
     lua_pushcfunction(L, lua_dbg_send);      lua_setglobal(L, "dbg_send");
     lua_pushcfunction(L, lua_dbg_recv_line); lua_setglobal(L, "dbg_recv_line");
     lua_pushcfunction(L, lua_dbg_recv_line_timeout); lua_setglobal(L, "dbg_recv_line_timeout");
     lua_pushcfunction(L, lua_dbg_recv_n);    lua_setglobal(L, "dbg_recv_n");
-    lua_pushcfunction(L, lua_dbg_close);     lua_setglobal(L, "dbg_close");
+    lua_pushcfunction(L, lua_dbg_close);     lua_setglobal(L, "dbg_close");`n    lua_pushcfunction(L, lua_dbg_getpid);    lua_setglobal(L, "dbg_getpid");`n    lua_pushcfunction(L, lua_dbg_readlink);  lua_setglobal(L, "dbg_readlink");
 
     std::cout << "Starting Lua: lua/Entry.lua\n";
 
