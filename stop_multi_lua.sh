@@ -18,7 +18,7 @@ kill_pid() {
 }
 
 if [ -f "$STATE_FILE" ]; then
-  while read -r pid log_file; do
+  while read -r pid port log_file; do
     kill_pid "$pid"
   done < "$STATE_FILE"
   rm -f "$STATE_FILE"
