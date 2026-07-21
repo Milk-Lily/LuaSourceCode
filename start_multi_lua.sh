@@ -47,13 +47,19 @@ fi
 
 : > "$STATE_FILE"
 
+# 注册表目录固定写到仓库根目录下的 milkdebug-registry（不是 build/ 输出目录），
+# 因为 IDE 那边的 SSH "Remote Path" 通常配置成仓库根目录，插件按
+# "<Remote Path>/milkdebug-registry" 去扫描；如果不覆盖，Entry.lua 默认会按可执行
+# 文件所在目录（也就是 build/）算 remote_root，导致两边路径对不上、发现不到进程。
+REGISTRY_DIR="$ROOT_DIR/milkdebug-registry"
+
 i=0
 while [ "$i" -lt "$N" ]; do
   port=$((BASE_PORT + i))
   log_file="$LOG_DIR/process-$port.log"
   (
     cd "$BUILD_DIR"
-    MOBDEBUG_PORT="$port" nohup "$EXE" > "$log_file" 2>&1 &
+    MOBDEBUG_PORT="$port" MOBDEBUG_REGISTRY_DIR="$REGISTRY_DIR" nohup "$EXE" > "$log_file" 2>&1 &
     echo "$!"
   ) > "$STATE_DIR/lastpid"
   pid=$(cat "$STATE_DIR/lastpid")
