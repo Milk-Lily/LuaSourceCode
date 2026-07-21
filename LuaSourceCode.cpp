@@ -276,9 +276,9 @@ int main()
     lua_pushcfunction(L, lua_dbg_getpid);    lua_setglobal(L, "dbg_getpid");
     lua_pushcfunction(L, lua_dbg_readlink);  lua_setglobal(L, "dbg_readlink");
 
-    std::cout << "Starting Lua: lua/Entry.lua\n";
+    std::cout << "Starting Lua: lua/debugger/Entry.lua\n";
 
-    int ret = luaL_dofile(L, "lua/Entry.lua");
+    int ret = luaL_dofile(L, "lua/debugger/Entry.lua");
     if (ret != LUA_OK) {
         const char* msg = lua_tostring(L, -1);
         // Ctrl+C 主动中断，不视为错误
