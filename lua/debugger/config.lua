@@ -32,8 +32,10 @@ return {
     -- 是否启用 Evaluate Expression 内联求值。对应 MOBDEBUG_EVAL_INLINE=1。
     mobdebug_eval_inline = false,
 
-    -- Evaluate Expression 返回值编码方式。对应 MOBDEBUG_EVAL_RESPONSE_MODE。
-    mobdebug_eval_response_mode = "length",
+    -- Evaluate Expression 返回值编码方式；IDE 插件当前只按行解析响应，必须用 "inline_value"
+    -- 或 "inline_serialized"（值和 "200 OK" 同一行），不要用 "length"（值单独一行发送，插件读不到）。
+    -- 对应 MOBDEBUG_EVAL_RESPONSE_MODE。
+    mobdebug_eval_response_mode = "inline_value",
 
     -- ── MilkDebug Agent（自研协议，插件未使用，默认禁用）──
 

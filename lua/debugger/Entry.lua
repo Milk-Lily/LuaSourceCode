@@ -85,7 +85,7 @@ if not mobdebug_disable then
             _G.__mobdebug_keepalive_on_exit = true
             _G.__mobdebug_report_fullpath = true
             _G.__mobdebug_eval_inline = env_or_cfg_bool('MOBDEBUG_EVAL_INLINE', debug_cfg.mobdebug_eval_inline, false)
-            _G.__mobdebug_eval_response_mode = env_or_cfg('MOBDEBUG_EVAL_RESPONSE_MODE', debug_cfg.mobdebug_eval_response_mode, 'length')
+            _G.__mobdebug_eval_response_mode = env_or_cfg('MOBDEBUG_EVAL_RESPONSE_MODE', debug_cfg.mobdebug_eval_response_mode, 'inline_value')
             mobdebug_or_err.checkcount = env_or_cfg_num('MOBDEBUG_CHECKCOUNT', debug_cfg.mobdebug_checkcount, 1)
 
             -- 多进程共用同一起始端口时，端口被占用则自动尝试后面的端口
