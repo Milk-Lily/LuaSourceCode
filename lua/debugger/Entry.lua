@@ -75,6 +75,15 @@ if not mobdebug_disable then
     if ok_mob then
         local _base = _dir:gsub("\\", "/")
         _base = _base:gsub("lua/$", "")
+
+        -- 自动推算只在 "debugger/ 嵌套在脚本根目录下" 时才准确；如果 debugger/ 和脚本实际运行
+        -- 目录是兄弟关系（例如 debugger/ 在 server/ 下，脚本跑在 server/bin/script/ 下），需要
+        -- 用 MOBDEBUG_BASEDIR / mobdebug_basedir 显式覆盖，指向脚本实际运行目录的父目录。
+        local base_override = env_or_cfg('MOBDEBUG_BASEDIR', debug_cfg.mobdebug_basedir, nil)
+        if base_override then
+            _base = base_override:gsub("\\", "/")
+            if _base:sub(-1) ~= "/" then _base = _base .. "/" end
+        end
         pcall(mobdebug_or_err.basedir, _base)
 
         local mobdebug_mode = env_or_cfg('MOBDEBUG_MODE', debug_cfg.mobdebug_mode, 'listenbg')

@@ -26,6 +26,13 @@ return {
     -- 自定义时需和 SSH 面板 Remote Path 保持一致。对应 MOBDEBUG_REGISTRY_DIR。
     registry_dir = nil,
 
+    -- mobdebug 断点匹配用的基准目录（绝对路径，末尾带 /），nil 则自动按 "Entry.lua 所在目录的上一级"
+    -- 推算。仅当 debugger/ 和实际运行的脚本目录是"父子嵌套"关系时自动推算才准确；如果 debugger/
+    -- 和脚本运行目录是"兄弟"关系（例如 debugger/ 在 server/ 下，脚本实际跑在 server/bin/script/ 下），
+    -- 自动推算会算错，必须显式填绝对路径，例如 "/home/xxx/server/bin/"，和 Linux 上脚本实际运行
+    -- 目录的父目录保持一致。对应 MOBDEBUG_BASEDIR（不设置环境变量时，改这里即可，无需重启环境变量配置）。
+    mobdebug_basedir = nil,   -- 例如: "/home/xxx/server/bin/"
+
     -- listenbg 模式下每隔多少条 hook 事件轮询一次。对应 MOBDEBUG_CHECKCOUNT。
     mobdebug_checkcount = 1,
 

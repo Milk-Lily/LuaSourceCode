@@ -691,6 +691,8 @@ local function debug_hook(event, line)
       -- session, so do it here to at least avoid setting it for every line.
       seen_hook = true
       lastfile = file
+      print(("[mobdebug] file resolved raw=%s normalized=%s basedir=%s"):format(
+        tostring(file), tostring(normalize_breakpoint_file(file)), tostring(basedir)))
     end
 
     if is_pending(server) then handle_breakpoint(server) end
